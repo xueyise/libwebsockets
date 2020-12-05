@@ -589,7 +589,7 @@ lws_async_dns_query(struct lws_context *context, int tsi, const char *name,
 
 	c = lws_adns_get_cache(dns, name);
 	if (c) {
-		lwsl_err("%s: using cached, c->results %p\n", __func__, c->results);
+		lwsl_info("%s: using cached, c->results %p\n", __func__, c->results);
 		m = c->results ? LADNS_RET_FOUND : LADNS_RET_FAILED;
 		if (c->results)
 			c->refcount++;
