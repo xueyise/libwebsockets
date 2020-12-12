@@ -93,7 +93,7 @@ lws_create_basic_wsi(struct lws_context *context, int tsi,
 	new_wsi->evlib_wsi = (uint8_t *)new_wsi + sizeof(*new_wsi);
 #endif
 
-	new_wsi->tsi = tsi;
+	new_wsi->tsi = (char)tsi;
 	new_wsi->a.context = context;
 	new_wsi->pending_timeout = NO_PENDING_TIMEOUT;
 	new_wsi->rxflow_change_to = LWS_RXFLOW_ALLOW;
@@ -170,7 +170,7 @@ lws_spawn_reap(struct lws_spawn_piped *lsp)
 	/* check if exited, do not reap yet */
 
 	memset(&lsp->si, 0, sizeof(lsp->si));
-	n = waitid(P_PID, lsp->child_pid, &lsp->si, WEXITED | WNOHANG | WNOWAIT);
+	n = waitid(P_PID, (id_t)lsp->child_pid, &lsp->si, WEXITED | WNOHANG | WNOWAIT);
 	if (n < 0) {
 		lwsl_info("%s: child %d still running\n", __func__, lsp->child_pid);
 		return 0;
@@ -221,14 +221,14 @@ lws_spawn_reap(struct lws_spawn_piped *lsp)
 		/*
 		 * Cpu accounting in us
 		 */
-		lsp->accounting[0] = ((uint64_t)tms.tms_cstime * 1000000) / hz;
-		lsp->accounting[1] = ((uint64_t)tms.tms_cutime * 1000000) / hz;
-		lsp->accounting[2] = ((uint64_t)tms.tms_stime * 1000000) / hz;
-		lsp->accounting[3] = ((uint64_t)tms.tms_utime * 1000000) / hz;
+		lsp->accounting[0] = (lws_usec_t)((uint64_t)tms.tms_cstime * 1000000) / hz;
+		lsp->accounting[1] = (lws_usec_t)((uint64_t)tms.tms_cutime * 1000000) / hz;
+		lsp->accounting[2] = (lws_usec_t)((uint64_t)tms.tms_stime * 1000000) / hz;
+		lsp->accounting[3] = (lws_usec_t)((uint64_t)tms.tms_utime * 1000000) / hz;
 	}
 
 	temp = *lsp;
-	n = waitid(P_PID, lsp->child_pid, &temp.si, WEXITED | WNOHANG);
+	n = waitid(P_PID, (id_t)lsp->child_pid, &temp.si, WEXITED | WNOHANG);
 	temp.si.si_status &= 0xff; /* we use b8 + for flags */
 	lwsl_info("%s: waitd says %d, process exit %d\n",
 		    __func__, n, temp.si.si_status);
@@ -371,7 +371,7 @@ lws_spawn_piped(const struct lws_spawn_piped_info *i)
 			lwsl_err("%s: unable to create lsp stdwsi\n", __func__);
 			goto bail2;
 		}
-		lsp->stdwsi[n]->lsp_channel = n;
+		lsp->stdwsi[n]->lsp_channel = (uint8_t)n;
 		lws_vhost_bind_wsi(i->vh, lsp->stdwsi[n]);
 		lsp->stdwsi[n]->a.protocol = pcol;
 		lsp->stdwsi[n]->a.opaque_user_data = i->opaque;

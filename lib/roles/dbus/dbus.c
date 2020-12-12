@@ -89,7 +89,7 @@ __lws_shadow_wsi(struct lws_dbus_ctx *ctx, DBusWatch *w, int fd, int create_ok)
 	wsi->desc.sockfd = fd;
 	lws_role_transition(wsi, 0, LRS_ESTABLISHED, &role_ops_dbus);
 	wsi->a.protocol = ctx->vh->protocols;
-	wsi->tsi = ctx->tsi;
+	wsi->tsi = (char)ctx->tsi;
 	wsi->shadow = 1;
 	wsi->opaque_parent_data = ctx;
 	ctx->w[0] = w;
@@ -190,7 +190,7 @@ lws_dbus_add_watch(DBusWatch *w, void *data)
 	lwsl_info("%s: w %p, fd %d, data %p, flags %d\n", __func__, w,
 		  dbus_watch_get_unix_fd(w), data, lws_flags);
 
-	__lws_change_pollfd(wsi, 0, lws_flags);
+	__lws_change_pollfd(wsi, 0, (int)lws_flags);
 
 	lws_pt_unlock(pt);
 
@@ -257,7 +257,7 @@ lws_dbus_remove_watch(DBusWatch *w, void *data)
 	lwsl_info("%s: w %p, fd %d, data %p, clearing lws flags %d\n",
 		  __func__, w, dbus_watch_get_unix_fd(w), data, lws_flags);
 
-	__lws_change_pollfd(wsi, lws_flags, 0);
+	__lws_change_pollfd(wsi, (int)lws_flags, 0);
 
 bail:
 	lws_pt_unlock(pt);

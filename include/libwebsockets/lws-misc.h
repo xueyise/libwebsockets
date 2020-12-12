@@ -185,6 +185,8 @@ lws_buflist_describe(struct lws_buflist **head, void *id, const char *reason);
  */
 #define lws_ptr_diff(head, tail) \
 			((int)((char *)(head) - (char *)(tail)))
+#define lws_ptr_diff_size_t(head, tail) \
+			((size_t)(ssize_t)((char *)(head) - (char *)(tail)))
 
 /**
  * lws_snprintf(): snprintf that truncates the returned length too
@@ -539,7 +541,7 @@ lws_get_child(const struct lws *wsi);
  * and subdir creation / permissions down /var/cache dynamically.
  */
 LWS_VISIBLE LWS_EXTERN void
-lws_get_effective_uid_gid(struct lws_context *context, int *uid, int *gid);
+lws_get_effective_uid_gid(struct lws_context *context, uid_t *uid, gid_t *gid);
 
 /**
  * lws_get_udp() - get wsi's udp struct
@@ -868,7 +870,7 @@ LWS_VISIBLE extern const lws_humanize_unit_t humanize_schema_us[8];
  */
 
 LWS_VISIBLE LWS_EXTERN int
-lws_humanize(char *buf, int len, uint64_t value,
+lws_humanize(char *buf, size_t len, uint64_t value,
 	     const lws_humanize_unit_t *schema);
 
 LWS_VISIBLE LWS_EXTERN void

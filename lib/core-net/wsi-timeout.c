@@ -135,7 +135,7 @@ __lws_set_timeout(struct lws *wsi, enum pending_timeout reason, int secs)
 
 	lwsl_debug("%s: %p: %d secs, reason %d\n", __func__, wsi, secs, reason);
 
-	wsi->pending_timeout = reason;
+	wsi->pending_timeout = (char)reason;
 }
 
 void
@@ -193,7 +193,7 @@ lws_set_timeout_us(struct lws *wsi, enum pending_timeout reason, lws_usec_t us)
 	lwsl_notice("%s: %p: %llu us, reason %d\n", __func__, wsi,
 		   (unsigned long long)us, reason);
 
-	wsi->pending_timeout = reason;
+	wsi->pending_timeout = (char)reason;
 	lws_pt_unlock(pt);
 }
 

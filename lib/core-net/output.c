@@ -105,25 +105,25 @@ lws_issue_raw(struct lws *wsi, unsigned char *buf, size_t len)
 
 	/* limit sending */
 	if (wsi->a.protocol->tx_packet_size)
-		n = (int)wsi->a.protocol->tx_packet_size;
+		n = (unsigned int)wsi->a.protocol->tx_packet_size;
 	else {
-		n = (int)wsi->a.protocol->rx_buffer_size;
+		n = (unsigned int)wsi->a.protocol->rx_buffer_size;
 		if (!n)
 			n = context->pt_serv_buf_size;
 	}
 	n += LWS_PRE + 4;
 	if (n > len)
-		n = (int)len;
+		n = (unsigned int)len;
 
 	/* nope, send it on the socket directly */
 
-	m = lws_ssl_capable_write(wsi, buf, n);
+	m = (unsigned int)lws_ssl_capable_write(wsi, buf, n);
 	lwsl_info("%s: ssl_capable_write (%d) says %d\n", __func__, n, m);
 
 	/* something got written, it can have been truncated now */
 	wsi->could_have_pending = 1;
 
-	switch (m) {
+	switch ((int)m) {
 	case LWS_SSL_CAPABLE_ERROR:
 		/* we're going to close, let close know sends aren't possible */
 		wsi->socket_is_permanently_unusable = 1;
@@ -157,7 +157,7 @@ lws_issue_raw(struct lws *wsi, unsigned char *buf, size_t len)
 			lwsl_info("%s: wsi %p: buflist_out flushed\n",
 				  __func__, wsi);
 
-			m = (int)real_len;
+			m = (unsigned int)real_len;
 			if (lwsi_state(wsi) == LRS_FLUSHING_BEFORE_CLOSE) {
 				lwsl_info("*%p signalling to close now\n", wsi);
 				return -1; /* retry closing now */
@@ -189,7 +189,7 @@ lws_issue_raw(struct lws *wsi, unsigned char *buf, size_t len)
 		/* always callback on writeable */
 		lws_callback_on_writable(wsi);
 
-		return m;
+		return (int)m;
 	}
 
 #if defined(LWS_WITH_HTTP_STREAM_COMPRESSION)
@@ -199,7 +199,7 @@ lws_issue_raw(struct lws *wsi, unsigned char *buf, size_t len)
 
 	if (m == real_len)
 		/* what we just sent went out cleanly */
-		return m;
+		return (int)m;
 
 	/*
 	 * We were not able to send everything... and we were not sending from
@@ -273,14 +273,14 @@ lws_write(struct lws *wsi, unsigned char *buf, size_t len,
 #if defined(LWS_WITH_DETAILED_LATENCY)
 	if (wsi->a.context->detailed_latency_cb) {
 		wsi->detlat.req_size = len;
-		wsi->detlat.acc_size = m;
+		wsi->detlat.acc_size = (unsigned int)m;
 		wsi->detlat.type = LDLT_WRITE;
 		if (wsi->detlat.earliest_write_req_pre_write)
 			wsi->detlat.latencies[LAT_DUR_PROXY_PROXY_REQ_TO_WRITE] =
-					us - wsi->detlat.earliest_write_req_pre_write;
+					(uint32_t)(us - wsi->detlat.earliest_write_req_pre_write);
 		else
 			wsi->detlat.latencies[LAT_DUR_PROXY_PROXY_REQ_TO_WRITE] = 0;
-		wsi->detlat.latencies[LAT_DUR_USERCB] = lws_now_usecs() - us;
+		wsi->detlat.latencies[LAT_DUR_USERCB] = (uint32_t)(lws_now_usecs() - us);
 		lws_det_lat_cb(wsi->a.context, &wsi->detlat);
 
 	}
@@ -290,7 +290,7 @@ lws_write(struct lws *wsi, unsigned char *buf, size_t len,
 }
 
 int
-lws_ssl_capable_read_no_ssl(struct lws *wsi, unsigned char *buf, int len)
+lws_ssl_capable_read_no_ssl(struct lws *wsi, unsigned char *buf, size_t len)
 {
 	struct lws_context *context = wsi->a.context;
 	struct lws_context_per_thread *pt = &context->pt[(int)wsi->tsi];
@@ -303,11 +303,19 @@ lws_ssl_capable_read_no_ssl(struct lws *wsi, unsigned char *buf, int len)
 	if (lws_wsi_is_udp(wsi)) {
 		socklen_t slt = sizeof(wsi->udp->sa46);
 
-		n = recvfrom(wsi->desc.sockfd, (char *)buf, len, 0,
+		n = (int)recvfrom(wsi->desc.sockfd, (char *)buf,
+#if defined(WIN32)
+				(int)
+#endif
+				len, 0,
 				sa46_sockaddr(&wsi->udp->sa46), &slt);
 	} else
 #endif
-		n = recv(wsi->desc.sockfd, (char *)buf, len, 0);
+		n = (int)recv(wsi->desc.sockfd, (char *)buf,
+#if defined(WIN32)
+				(int)
+#endif
+				len, 0);
 
 	if (n >= 0) {
 
@@ -323,9 +331,9 @@ lws_ssl_capable_read_no_ssl(struct lws *wsi, unsigned char *buf, int len)
 
 #if defined(LWS_WITH_SERVER_STATUS)
 		if (wsi->a.vhost)
-			wsi->a.vhost->conn_stats.rx += n;
+			wsi->a.vhost->conn_stats.rx = (unsigned long long)(wsi->a.vhost->conn_stats.rx + (unsigned long long)(long long)n);
 #endif
-		lws_stats_bump(pt, LWSSTATS_B_READ, n);
+		lws_stats_bump(pt, LWSSTATS_B_READ, (unsigned int)n);
 
 		return n;
 	}
@@ -340,7 +348,7 @@ lws_ssl_capable_read_no_ssl(struct lws *wsi, unsigned char *buf, int len)
 }
 
 int
-lws_ssl_capable_write_no_ssl(struct lws *wsi, unsigned char *buf, int len)
+lws_ssl_capable_write_no_ssl(struct lws *wsi, unsigned char *buf, size_t len)
 {
 	int n = 0;
 #if defined(LWS_PLAT_OPTEE)
@@ -360,25 +368,39 @@ lws_ssl_capable_write_no_ssl(struct lws *wsi, unsigned char *buf, int len)
 				    wsi->a.context->udp_loss_sim_tx_pc) {
 				lwsl_warn("%s: dropping udp tx\n", __func__);
 				/* pretend it was sent */
-				n = len;
+				n = (int)(ssize_t)len;
 				goto post_send;
 			}
 		}
 
 		if (lws_has_buffered_out(wsi))
-			n = sendto(wsi->desc.sockfd, (const char *)buf,
+			n = (int)sendto(wsi->desc.sockfd, (const char *)buf,
+#if defined(WIN32)
+				(int)
+#endif
 				   len, 0, sa46_sockaddr(&wsi->udp->sa46_pending),
 				   sa46_socklen(&wsi->udp->sa46_pending));
 		else
-			n = sendto(wsi->desc.sockfd, (const char *)buf,
+			n = (int)sendto(wsi->desc.sockfd, (const char *)buf,
+#if defined(WIN32)
+				(int)
+#endif
 				   len, 0, sa46_sockaddr(&wsi->udp->sa46),
 				   sa46_socklen(&wsi->udp->sa46));
 	} else
 #endif
 		if (wsi->role_ops->file_handle)
-			n = write((int)(lws_intptr_t)wsi->desc.filefd, buf, len);
+			n = (int)write((int)(lws_intptr_t)wsi->desc.filefd, buf,
+#if defined(WIN32)
+				(int)
+#endif
+					len);
 		else
-			n = send(wsi->desc.sockfd, (char *)buf, len, MSG_NOSIGNAL);
+			n = (int)send(wsi->desc.sockfd, (char *)buf,
+#if defined(WIN32)
+				(int)
+#endif
+					len, MSG_NOSIGNAL);
 //	lwsl_info("%s: sent len %d result %d", __func__, len, n);
 
 #if defined(LWS_WITH_UDP)
@@ -398,7 +420,7 @@ post_send:
 	}
 
 	lwsl_debug("ERROR writing len %d to skt fd %d err %d / errno %d\n",
-		   len, wsi->desc.sockfd, n, LWS_ERRNO);
+		   (int)(ssize_t)len, wsi->desc.sockfd, n, LWS_ERRNO);
 
 	return LWS_SSL_CAPABLE_ERROR;
 }
